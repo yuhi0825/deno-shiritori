@@ -1,5 +1,18 @@
 /* public/styles.css */
 
-body {
+body.default {
     background: skyblue;
+}
+
+body.player1 {
+    background: rgb(255, 210, 210);
+}
+body.player2 {
+    background: rgb(225, 255, 225);
+}
+body.player3 {
+    background: rgb(201, 241, 255);
+}
+body.player4 {
+    background: rgb(255, 255, 206);
 }

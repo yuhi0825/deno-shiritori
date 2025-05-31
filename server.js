@@ -3,6 +3,7 @@ import { serveDir } from "jsr:@std/http/file-server";
 
 // 直前の単語を保持しておく
 let previousWord = "しりとり";
+let usedWords = ["しりとり"];
 
 // localhostにDenoのHTTPサーバーを展開
 Deno.serve(async (_req) => {
@@ -12,6 +13,12 @@ Deno.serve(async (_req) => {
     // http://localhost:8000/hoge に接続した場合"/hoge"が取得できる
     const pathname = new URL(_req.url).pathname;
     console.log(`pathname: ${pathname}`);
+
+    // ゲームリセット
+    function resetGame() {
+        previousWord = "しりとり";
+        usedWords = ["しりとり"];
+    }
 
     // GET /shiritori: 直前の単語を返す
     if (_req.method === "GET" && pathname === "/shiritori") {
@@ -43,9 +50,45 @@ Deno.serve(async (_req) => {
                 },
             );
         }
-
+        if (usedWords.includes(nextWord)) {
+            return new Response(
+                JSON.stringify({
+                    errorMessage: "使用済みの単語なのでゲーム終了です",
+                    errorCode: "10002",
+                }),
+                {
+                    status: 400,
+                    headers: {
+                        "Content-Type": "application/json; charset=utf-8",
+                    },
+                },
+            );
+        }
+        if (nextWord.slice(-1) === "ん") {
+            return new Response(
+                JSON.stringify({
+                    errorMessage: "「ん」で終わったのでゲーム終了です",
+                    errorCode: "10003",
+                }),
+                {
+                    status: 400,
+                    headers: {
+                        "Content-Type": "application/json; charset=utf-8",
+                    },
+                },
+            );
+        }
+        //単語の記録
+        usedWords.push(nextWord);
+        previousWord = nextWord;
         // 現在の単語を返す
         return new Response(previousWord);
+    }
+
+    // POST /reset: ゲームの状態をリセット
+    if (_req.method === "POST" && pathname === "/reset") {
+        resetGame();
+        return new Response("ゲームがリセットされました");
     }
 
     return serveDir(

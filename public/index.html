@@ -1,67 +1,162 @@
 <!-- public/index.html -->
 
 <head>
-  <!-- headタグの中にはメタデータ等を記載する -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>しりとり</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-  <!-- bodyタグの中には実際に表示するものなどを書く -->
-  <h1>しりとり</h1>
-  <!-- 現在の単語を表示する場所-->
-  <p id="previousWord"></p>
-  <!-- 次の文字を入力するフォーム -->
-  <input id="nextWordInput" type="text" />
-  <button id="nextWordSendButton">送信</button>
+
+  <body class="default">
+    <!-- プレイヤー数選択-->
+    <div id="playerSelect">
+      <h1>しりとり</h1>
+      <p>人数を選択してください：</p>
+      <select id="playerCountSelect">
+        <option value="2">2人</option>
+        <option value="3">3人</option>
+        <option value="4" selected>4人</option>
+      </select>
+      <button id="startGameButton">ゲーム開始</button>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="gameUI" style="display:none;">
+      <h1>しりとり</h1>
+      <!-- 現在のプレイヤーを表示する場所 -->
+      <p id="currentPlayerDisplay"></p>
+      <!-- 現在の単語を表示する場所-->
+      <p id="previousWord"></p>
+      <!-- 次の文字を入力するフォーム -->
+      <input id="nextWordInput" type="text">
+      <button id="nextWordSendButton">送信</button>
+      <button id="resetButton">リセット</button>
+      <button id="gameResetButton">ゲームリセット</button>
+    </div>
 
 
-  <!-- JavaScriptを実行-->
-  <script>
-    window.onload = async (event) => {
-      // GET /shiritoriを実行
-      const response = await fetch("/shiritori", { method: "GET" });
-      // responseの中からレスポンスのテキストデータを取得
-      const previousWord = await response.text();
-      // id: previousWordのタグを取得
-      const paragraph = document.querySelector("#previousWord");
-      // 取得したタグの中身を書き換える
-      paragraph.innerHTML = `前の単語: ${previousWord}`;
-    }
-    // 送信ボタンの押下時に実行
-    document.querySelector("#nextWordSendButton").onclick = async (event) => {
-      // inputタグを取得
-      const nextWordInput = document.querySelector("#nextWordInput");
-      // inputの中身を取得
-      const nextWordInputText = nextWordInput.value;
-      // POST /shiritoriを実行
-      // 次の単語をresponseに格納
-      const response = await fetch(
-        "/shiritori",
-        {
+    <!-- JavaScriptを実行-->
+    <script>
+      let playerCount = 4;
+      let currentPlayerIndex = 0;
+
+      //関数
+      function updateBackgroundForPlayer(index) {
+        document.body.className = `player${index + 1}`;
+      }
+
+      function updatePlayerDisplay() {
+        const playerNumber = currentPlayerIndex + 1;
+        document.querySelector("#currentPlayerDisplay").textContent = `次はプレイヤー${playerNumber}の番です`;
+        updateBackgroundForPlayer(currentPlayerIndex);
+      }
+
+      function toHiragana(str) {
+        return str.replace(/[\u30a1-\u30f6]/g, (match) =>
+          String.fromCharCode(match.charCodeAt(0) - 0x60)
+        );
+      }
+
+      window.onload = async (event) => {
+        // GET /shiritoriを実行
+        const response = await fetch("/shiritori", { method: "GET" });
+        // responseの中からレスポンスのテキストデータを取得
+        const previousWord = await response.text();
+        // id: previousWordのタグを取得
+        const paragraph = document.querySelector("#previousWord");
+        // 取得したタグの中身を書き換える
+        paragraph.innerHTML = `前の単語: ${previousWord}`;
+      }
+      //ゲーム画面に切り替え
+      document.querySelector("#startGameButton").onclick = () => {
+        const selectedValue = document.querySelector("#playerCountSelect").value;
+        playerCount = parseInt(selectedValue, 10);
+        currentPlayerIndex = 0;
+
+        document.querySelector("#playerSelect").style.display = "none";
+        document.querySelector("#gameUI").style.display = "block";
+
+        document.body.className = `player${currentPlayerIndex + 1}`;
+        updatePlayerDisplay();
+
+      };
+
+      // 送信ボタンの押下時に実行
+      document.querySelector("#nextWordSendButton").onclick = async (event) => {
+        // inputタグを取得
+        const nextWordInput = document.querySelector("#nextWordInput");
+        // 入力内容を取得
+        let nextWordInputText = nextWordInput.value.trim();
+        // カタカナ → ひらがなに変換
+        nextWordInputText = toHiragana(nextWordInputText);
+
+        // POST /shiritoriを実行
+        // 次の単語をresponseに格納
+        const response = await fetch("/shiritori", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nextWord: nextWordInputText })
-        }
-      );
+        });
 
-      // status: 200以外が返ってきた場合にエラーを表示
-      if (response.status !== 200) {
-        const errorJson = await response.text();
-        const errorObj = JSON.parse(errorJson);
-        alert(errorObj["errorMessage"]);
+        //alert表示
+        const kanaRegex = /^[\u3040-\u309F\u30A0-\u30FFー]+$/;
+        if (!kanaRegex.test(nextWordInputText)) {
+          alert("ひらがなまたはカタカナのみ入力してください");
+        }
+
+        if (nextWordInputText.length < 2) {
+          alert("1文字の単語は使用できません。2文字以上で入力してください");
+          return;
+        }
+
+        if (response.status !== 200) {
+          const errorJson = await response.text();
+          const errorObj = JSON.parse(errorJson);
+          alert(errorObj["errorMessage"]);
+        }
+
+        const previousWord = await response.text();
+        // id: previousWordのタグを取得
+        const paragraph = document.querySelector("#previousWord");
+        // 取得したタグの中身を書き換える
+        paragraph.innerHTML = `前の単語: ${previousWord}`;
+        // inputタグの中身を消去する
+        nextWordInput.value = "";
+
+        // プレイヤー交代
+        currentPlayerIndex = (currentPlayerIndex + 1) % playerCount;
+        updatePlayerDisplay();
+
       }
 
-      const previousWord = await response.text();
+      //リセットボタン
+      document.querySelector("#resetButton").onclick = () => {
+        document.querySelector("#nextWordInput").value = "";
+      };
 
-      // id: previousWordのタグを取得
-      const paragraph = document.querySelector("#previousWord");
-      // 取得したタグの中身を書き換える
-      paragraph.innerHTML = `前の単語: ${previousWord}`;
-      // inputタグの中身を消去する
-      nextWordInput.value = "";
-    }    
-  </script>
-</body>
+      // ゲームリセットボタン
+      document.querySelector("#gameResetButton").onclick = async () => {
+        const confirmReset = confirm("ゲームをリセットしますか？");
+        if (!confirmReset) return;
+
+        const response = await fetch("/reset", { method: "POST" });
+        const message = await response.text();
+
+        // ゲームUIを非表示、初期画面を表示
+        document.querySelector("#gameUI").style.display = "none";
+        document.querySelector("#playerSelect").style.display = "block";
+
+        // 単語やプレイヤーのリセット
+        document.querySelector("#previousWord").innerHTML = "前の単語: しりとり";
+        document.querySelector("#nextWordInput").value = "";
+        document.querySelector("#currentPlayerDisplay").textContent = "";
+        currentPlayerIndex = 0;
+        document.body.className = "default";
+
+        alert(message);
+      };
+
+    </script>
+  </body>
