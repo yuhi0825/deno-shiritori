@@ -92,14 +92,6 @@
         // カタカナ → ひらがなに変換
         nextWordInputText = toHiragana(nextWordInputText);
 
-        // POST /shiritoriを実行
-        // 次の単語をresponseに格納
-        const response = await fetch("/shiritori", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nextWord: nextWordInputText })
-        });
-
         //alert表示
         if (nextWordInputText.length < 2) {
           alert("2文字以上で入力してください");
@@ -112,11 +104,17 @@
           return;
         }
 
+        // POST /shiritoriを実行
+        // 次の単語をresponseに格納
+        const response = await fetch("/shiritori", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nextWord: nextWordInputText })
+        });
 
         if (response.status !== 200) {
-          const errorJson = await response.text();
-          const errorObj = JSON.parse(errorJson);
-          alert(errorObj["errorMessage"]);
+          const errorJson = await response.json();
+          alert(errorJson["errorMessage"]);
           return;
         }
 
@@ -131,8 +129,8 @@
         // プレイヤー交代
         currentPlayerIndex = (currentPlayerIndex + 1) % playerCount;
         updatePlayerDisplay();
+      };
 
-      }
 
       //リセットボタン
       document.querySelector("#resetButton").onclick = () => {
