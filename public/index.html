@@ -101,20 +101,23 @@
         });
 
         //alert表示
+        if (nextWordInputText.length < 2) {
+          alert("2文字以上で入力してください");
+          return;
+        }
+
         const kanaRegex = /^[\u3040-\u309F\u30A0-\u30FFー]+$/;
         if (!kanaRegex.test(nextWordInputText)) {
           alert("ひらがなまたはカタカナのみ入力してください");
-        }
-
-        if (nextWordInputText.length < 2) {
-          alert("1文字の単語は使用できません。2文字以上で入力してください");
           return;
         }
+
 
         if (response.status !== 200) {
           const errorJson = await response.text();
           const errorObj = JSON.parse(errorJson);
           alert(errorObj["errorMessage"]);
+          return;
         }
 
         const previousWord = await response.text();
